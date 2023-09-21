@@ -1,0 +1,340 @@
+# 1. 简介
+
+mybatis中文文档：https://mybatis.org/mybatis-3/zh/index.html
+
+## 1.1 什么是mybatis
+
+![](http://www.mybatis.org/images/mybatis-logo.png)
+
+- MyBatis 是一款优秀的**持久层框架**。
+- 它支持自定义 SQL、存储过程以及高级映射。
+- MyBatis 免除了几乎所有的 JDBC 代码以及设置参数和获取结果集的工作。
+- MyBatis 可以通过简单的 XML 或注解来配置和映射原始类型、接口和 Java POJO（Plain Old Java Objects，普通老式 Java 对象）为数据库中的记录。
+
+- MyBatis本是apache的一个[开源项目](https://baike.baidu.com/item/开源项目/3406069?fromModule=lemma_inlink)**iBatis**（Internet abatis），2010年这个项目由apache software foundation迁移到了[google code](https://baike.baidu.com/item/google code/2346604?fromModule=lemma_inlink)，并且改名为MyBatis。2013年11月迁移到[Github](https://baike.baidu.com/item/Github/10145341?fromModule=lemma_inlink)。
+
+## 1.2 如何获取mybatis
+
+- github：https://github.com/mybatis/mybatis-3
+
+- maven：
+
+  ```xml
+  <!-- https://mvnrepository.com/artifact/org.mybatis/mybatis -->
+  <dependency>
+      <groupId>org.mybatis</groupId>
+      <artifactId>mybatis</artifactId>
+      <version>3.5.13</version>
+  </dependency>
+  ```
+
+  
+
+## 1.3 什么是持久化
+
+数据持久化
+
+- 持久化就是将程序的数据在**持久状态**和**瞬时状态**转化的过程
+- 持久化方式：数据库jdbc，io文件持久化
+
+## 1.4 什么是持久层
+
+Dao层，Service层，Controller层...
+
+- 完成持久化工作的代码
+
+## 1.5 优点
+
+- 方便
+- 传统的JDBC代码太复杂了。简化。框架。自动化。
+
+# 2.第一个Mybatis程序
+
+思路：搭建环境-->导入Mybatis-->编写代码-->测试！
+
+## 2.1 搭建环境
+
+搭建数据库
+
+```sql
+CREATE DATABASE mybatis;
+
+use mybatis;
+
+CREATE TABLE user(
+	id INT(20) NOT NULL PRIMARY KEY,
+    name VARCHAR(30) DEFAULT NULL,
+    pwd VARCHAR(30) DEFAULT NULL
+)ENGINE=INNODB DEFAULT CHARSET=utf8;
+
+INSERT INTO user(id,name,pwd) VALUES
+(1,'小罗','123456'),
+(2,'小鱼','159753'),
+(3,'小雪','200115')
+```
+
+新建项目
+
+1.新建一个普通的maven 项目
+
+2.删除src目录
+
+3.导入maven依赖
+
+```xml
+<!--导入依赖-->
+<dependencies>
+    <!--mysql驱动-->
+    <dependency>
+        <groupId>mysql</groupId>
+        <artifactId>mysql-connector-java</artifactId>
+        <version>5.1.47</version>
+    </dependency>
+    <!--mybatis-->
+    <!-- https://mvnrepository.com/artifact/org.mybatis/mybatis -->
+    <dependency>
+        <groupId>org.mybatis</groupId>
+        <artifactId>mybatis</artifactId>
+        <version>3.5.13</version>
+    </dependency>
+    <!--junit-->
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.12</version>
+        <scope>test</scope>
+    </dependency>
+</dependencies>
+```
+
+## 2.2 创建一个模块
+
+- 编写mybatis的核心配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-config.dtd">
+<!--configuration核心配置文件-->
+<configuration>
+
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/mybatis?useSSL=true&amp;useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Shanghai"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123"/>
+            </dataSource>
+        </environment>
+    </environments>
+    
+    <!--每一个Mapper.xml都需要在Mybatis核心配置文件中注册！-->
+    <mappers>
+        <mapper resource="com/luo/dao/UserMapper.xml"/>
+    </mappers>
+
+</configuration>
+```
+
+- 编写mybatis工具类
+
+```java
+//sqlSessionFactory --> sqlSession
+public class MybatisUtil {
+
+    //提升作用域
+    private static SqlSessionFactory sqlSessionFactory;
+
+//来自官方代码
+    static {
+        try {
+            //使用Mybatis第一步：获取sqlSessionFactory对象
+            String resource = "mybatis-config.xml";
+            InputStream inputStream = Resources.getResourceAsStream(resource);
+            sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //既然有了 SqlSessionFactory，顾名思义，我们可以从中获得 SqlSession 的实例。
+    //SqlSession 提供了在数据库执行 SQL 命令所需的所有方法。你可以通过 SqlSession 实例来直接执行已映射的 SQL 语句
+    public static SqlSession getSqlSession(){
+        return sqlSessionFactory.openSession();
+    }
+}
+```
+
+## 2.3 编写代码
+
+- 实体类
+
+```java
+public class User {
+    private Integer id;
+    private String name;
+    private String pwd;
+
+    public User() {
+    }
+
+    public User(Integer id, String name, String pwd) {
+        this.id = id;
+        this.name = name;
+        this.pwd = pwd;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPwd() {
+        return pwd;
+    }
+
+    public void setPwd(String pwd) {
+        this.pwd = pwd;
+    }
+
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", pwd='" + pwd + '\'' +
+                '}';
+    }
+}
+```
+
+- Dao接口
+
+```java
+public interface UserDao {
+    List<User> getUserList();
+}
+```
+
+- 接口实现类由原来的UserDaoImpl转变为一个Mapper配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--namespace=绑定一个对应的Dao/Mapper接口-->
+<mapper namespace="com.luo.dao.UserDao">
+
+<!--select查询语句-->
+    <select id="getUserList" resultType="com.luo.pojo.User">
+        select
+            *
+        from user
+    </select>
+
+</mapper>
+```
+
+## 2.4 测试
+
+**注意点：**<font color="red">org.apache.ibatis.binding.BindingException: Type interface com.luo.dao.UserDao is not known to the MapperRegistry.</font>
+
+**每一个Mapper.xml都需要在Mybatis核心配置文件中注册！**
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-config.dtd">
+<!--configuration核心配置文件-->
+<configuration>
+
+	......
+    
+    <!--每一个Mapper.xml都需要在Mybatis核心配置文件中注册！-->
+    <mappers>
+        <mapper resource="com/luo/dao/UserMapper.xml"/>
+    </mappers>
+
+</configuration>
+```
+
+**注意点：**<font color="red">Caused by: java.io.IOException: Could not find resource com/luo/dao/UserMapper.xml</font>
+
+```xml
+<!--在build中配置resource，来防止我们资源导出失败的问题-->
+<build>
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+            <includes>
+                <include>**/*.properties</include>
+                <include>**/*.xml</include>
+            </includes>
+            <filtering>true</filtering>
+        </resource>
+        <resource>
+            <directory>src/main/java</directory>
+            <includes>
+                <include>**/*.properties</include>
+                <include>**/*.xml</include>
+            </includes>
+            <filtering>true</filtering>
+        </resource>
+    </resources>
+</build>
+```
+
+**注意点：**<font color="red">Cause: org.apache.ibatis.builder.BuilderException: Error parsing SQL Mapper Configuration. Cause: org.apache.ibatis.builder.BuilderException: Error creating document instance.  Cause: com.sun.org.apache.xerces.internal.impl.io.MalformedByteSequenceException: 1 字节的 UTF-8 序列的字节 1 无效。</font>
+
+xml文件有中文注释会报错，将有中文注释的xml的<?xml version="1.0" encoding="UTF-8" ?>改为<?xml version="1.0" encoding="UTF8" ?>解决
+
+- junit测试
+
+```java
+public class UserDaoTest {
+    @Test
+    public void test(){
+        //第一步：获得SqlSession对象
+        SqlSession sqlSession = MybatisUtil.getSqlSession();
+        //第二步：执行SQL
+        //方式一：getMapper
+        UserDao userDao = sqlSession.getMapper(UserDao.class); //面向接口编程，多态
+        List<User> userList = userDao.getUserList();
+        System.out.println("userList = " + userList);
+        //方式二：不推荐使用
+        List<User> userList = sqlSession.selectList("com.luo.dao.UserDao.getUserList");
+        System.out.println("userList = " + userList);
+
+        //关闭sqlSession，当然也可以让jvm自己处理
+        sqlSession.close();
+    }
+}
+```
+
+#### SqlSessionFactoryBuilder
+
+这个类可以被实例化、使用和丢弃，**一旦创建了 SqlSessionFactory，就不再需要它了**。 因此 SqlSessionFactoryBuilder 实例的最佳作用域是方法作用域（也就是局部方法变量）。 你可以重用 SqlSessionFactoryBuilder 来创建多个 SqlSessionFactory 实例，但最好还是不要一直保留着它，以保证所有的 XML 解析资源可以被释放给更重要的事情。
+
+#### SqlSessionFactory
+
+SqlSessionFactory **一旦被创建就应该在应用的运行期间一直存在**，没有任何理由丢弃它或重新创建另一个实例。 使用 SqlSessionFactory 的最佳实践是在应用运行期间不要重复创建多次，多次重建 SqlSessionFactory 被视为一种代码“坏习惯”。因此 SqlSessionFactory 的最佳作用域是应用作用域。 有很多方法可以做到，最简单的就是使用**单例模式或者静态单例模式**。
+
+#### SqlSession
+
+每个线程都应该有它自己的 SqlSession 实例。**SqlSession 的实例不是线程安全的**，因此是不能被共享的，所以它的最佳的作用域是请求或方法作用域。 绝对不能将 SqlSession 实例的引用放在一个类的静态域，甚至一个类的实例变量也不行。 也绝不能将 SqlSession 实例的引用放在任何类型的托管作用域中，比如 Servlet 框架中的 HttpSession。 如果你现在正在使用一种 Web 框架，考虑将 SqlSession 放在一个和 HTTP 请求相似的作用域中。 换句话说，**每次收到 HTTP 请求，就可以打开一个 SqlSession，返回一个响应后，就关闭它。** 这个关闭操作很重要，为了确保每次都能执行关闭操作，你应该把这个关闭操作放到 finally 块中。 下面的示例就是一个确保 SqlSession 关闭的标准模式：
