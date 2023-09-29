@@ -232,7 +232,7 @@ public interface UserDao {
 
 - 接口实现类由原来的UserDaoImpl转变为一个Mapper配置文件
 
-```xml
+```xml-dtd
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
@@ -256,7 +256,7 @@ public interface UserDao {
 
 **每一个Mapper.xml都需要在Mybatis核心配置文件中注册！**
 
-```xml
+```xml-dtd
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE configuration
         PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
@@ -276,7 +276,7 @@ public interface UserDao {
 
 **注意点：**<font color="red">Caused by: java.io.IOException: Could not find resource com/luo/dao/UserMapper.xml</font>
 
-```xml
+```xml-dtd
 <!--在build中配置resource，来防止我们资源导出失败的问题-->
 <build>
     <resources>
@@ -302,7 +302,28 @@ public interface UserDao {
 
 **注意点：**<font color="red">Cause: org.apache.ibatis.builder.BuilderException: Error parsing SQL Mapper Configuration. Cause: org.apache.ibatis.builder.BuilderException: Error creating document instance.  Cause: com.sun.org.apache.xerces.internal.impl.io.MalformedByteSequenceException: 1 字节的 UTF-8 序列的字节 1 无效。</font>
 
-xml文件有中文注释会报错，将有中文注释的xml的<?xml version="1.0" encoding="UTF-8" ?>改为<?xml version="1.0" encoding="UTF8" ?>解决
+1. xml文件有中文注释会报错，将有中文注释的xml的<?xml version="1.0" encoding="UTF-8" ?>改为<?xml version="1.0" encoding="UTF8" ?>解决
+2. 将项目的编码改为UTF-8在pom文件中增加
+
+```xml-dtd
+<properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+</properties>
+```
+
+**注意点：**<font color="red">mapper的xml文件配置完后不变色</font>
+
+```xml-dtd
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"https://mybatis.org/dtd/mybatis-3-mapper.dtd">  <!-- 这是官网自带的，有https -->
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">  <!-- 将https改为http就行 -->
+```
+
+
 
 - junit测试
 
