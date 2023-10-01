@@ -3,13 +3,38 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!--namespace=绑定一个对应的Dao/Mapper接口-->
-<mapper namespace="com.luo.dao.UserDao">
+<mapper namespace="com.luo.dao.UserMapper">
 
-<!--select查询语句-->
+    <!--select查询语句-->
     <select id="getUserList" resultType="com.luo.pojo.User">
         select -- nihao
             *
         from user
     </select>
+
+    <select id="getUserById" parameterType="integer" resultType="com.luo.pojo.User">
+        select
+            *
+        from user
+        where id = #{id}
+    </select>
+
+    <!--对象中属性，可以直接取出来-->
+    <insert id="addUser" parameterType="com.luo.pojo.User">
+        insert into user(id, name, pwd)
+        values (#{id}, #{name}, #{pwd})
+    </insert>
+
+    <update id="updateUser" parameterType="com.luo.pojo.User">
+        update user
+        set name = #{name},
+            pwd = #{pwd}
+        where id = #{id}
+    </update>
+
+    <delete id="deleteUser" parameterType="integer">
+        delete from user
+        where id = #{id}
+    </delete>
 
 </mapper>
