@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<!--configuration核心配置文件-->
+<configuration>
+
+    <!--引入外部配置文件-->
+    <properties resource="db.properties">
+        <property name="username" value="root"/>
+        <property name="password" value="111111"/>
+    </properties>
+
+    <!--可以给实体类起别名-->
+<!--    <typeAliases>-->
+<!--        <typeAlias type="com.luo.pojo.User" alias="User"/>-->
+<!--    </typeAliases>-->
+    <!--扫描指定包下的实体类们，给它们默认别名为类名首字母小写-->
+    <typeAliases>
+        <package name="com.luo.pojo"/>
+    </typeAliases>
+
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+
+        <environment id="test">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/mybatis?useSSL=true&amp;useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Shanghai"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+<!--每一个Mapper.xml都需要在Mybatis核心配置文件中注册！-->
+    <mappers>
+        <!-- 使用相对于类路径的资源引用 -->
+        <mapper resource="com/luo/dao/UserMapper.xml"/>
+        <!-- 使用class文件绑定注册（接口类路径）-->
+<!--        <mapper class="com.luo.dao.UserMapper"/>-->
+        <!--方式三：使用扫描包进行注入绑定-->
+<!--        <package name="com.luo.dao"/>-->
+    </mappers>
+
+</configuration>

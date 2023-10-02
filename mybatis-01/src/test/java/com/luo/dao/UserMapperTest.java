@@ -5,7 +5,9 @@ import com.luo.util.MybatisUtil;
 import org.apache.ibatis.session.SqlSession;
 import org.junit.Test;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class UserMapperTest {
     @Test
@@ -93,4 +95,32 @@ public class UserMapperTest {
 
     }
 
+    @Test
+    public void addUser2() {
+        //第一步：获得SqlSession对象
+        SqlSession sqlSession = MybatisUtil.getSqlSession();
+        //第二步：执行SQL
+        UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+        Map<String, Object> map = new HashMap<>();
+        map.put("userId", 5);
+        map.put("userName", "小谭");
+        map.put("password", "201805**");
+        userMapper.addUser2(map);
+        //提交事务(增、删、改必须得提交事务)
+        sqlSession.commit();
+        //关闭sqlSession
+        sqlSession.close();
+    }
+
+    @Test
+    public void getUserLike() {
+        //第一步：获得SqlSession对象
+        SqlSession sqlSession = MybatisUtil.getSqlSession();
+        //第二步：执行SQL
+        UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+        List<User> userList = userMapper.getUserLike("大");
+        System.out.println("userList = " + userList);
+        //关闭sqlSession
+        sqlSession.close();
+    }
 }

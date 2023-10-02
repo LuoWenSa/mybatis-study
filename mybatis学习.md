@@ -461,3 +461,335 @@ public void updateUser(){
 </delete>
 ```
 
+## 3.7 万能的Map
+
+假设，我们的实体类，或者数据库中的表，字段或者参数过多，我们应当考虑使用Map！
+
+```java
+//万能的Map
+int addUser2(Map<String, Object> map);
+```
+
+```xml
+<insert id="addUser2" parameterType="map">
+    insert into user (id, name, pwd)
+    values (#{userId}, #{userName}, #{password})
+</insert>
+```
+
+**多个参数可以用Map，或者注解！**
+
+## 3.8 模糊查询
+
+1.java代码执行的时候，传递通配符% %
+
+```java
+List<User> userList = userMapper.getUserLike("大%");
+---------------------------------------------------
+select
+	*
+from user
+where name like #{value}
+```
+
+2.在sql拼接中使用通配符！防止sql注入
+
+```mysql
+List<User> userList = userMapper.getUserLike("大");
+-----------------------------------------------
+select
+	*
+from user
+where name like concat('%', #{value}, '%')
+```
+
+### SQL注入
+
+```mysql
+select * from user where id = ?   <!-应该传：1，获取id=1的用户-->
+select * from user where id = 1 or 1=1 <!-实际传了：1 or 1=1，获取所有用户-->
+```
+
+# 4.配置解析
+
+## 4.1 核心配置文件
+
+- mybatis-config.xml
+- MyBatis 的配置文件包含了会深深影响 MyBatis 行为的设置和属性信息。
+
+```xml
+configuration（配置）
+properties（属性）
+settings（设置）
+typeAliases（类型别名）
+typeHandlers（类型处理器）
+objectFactory（对象工厂）
+plugins（插件）
+environments（环境配置）
+environment（环境变量）
+transactionManager（事务管理器）
+dataSource（数据源）
+databaseIdProvider（数据库厂商标识）
+mappers（映射器）
+```
+
+## 4.2 环境配置（environments）
+
+MyBatis 可以配置成适应多种环境
+
+**不过要记住：尽管可以配置多个环境，但每个SqlSessionFactory实例只能选择一种环境。**
+
+Mybatis默认的事务管理器就是JDBC，连接池就是：POOLED <font color = "red">**（”池“的意思就是用完还可以回收再次利用）**</font>
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<!--configuration核心配置文件-->
+<configuration>
+
+    <environments default="test">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/mybatis?useSSL=true&amp;useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Shanghai"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123"/>
+            </dataSource>
+        </environment>
+
+        <environment id="test">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver"/>
+                <property name="url" value="jdbc:mysql://localhost:3306/mybatis?useSSL=true&amp;useUnicode=true&amp;characterEncoding=UTF-8&amp;serverTimezone=Asia/Shanghai"/>
+                <property name="username" value="root"/>
+                <property name="password" value="123"/>
+            </dataSource>
+        </environment>
+    </environments>
+...
+
+</configuration>
+```
+
+## 4.3 属性（properties）
+
+我们可以通过properties属性来实现引用配置文件
+
+这些属性可以在外部进行配置，并可以进行动态替换。你既可以在典型的 Java 属性文件中配置这些属性，也可以在 properties 元素的子元素中设置。【db.properties】
+
+1.编写一个配置文件
+
+db.properties
+
+```properties
+driver=com.mysql.jdbc.Driver
+url=jdbc:mysql://localhost:3306/mybatis?useSSL=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+username=root
+password=123
+```
+
+2.在核心配置文件中引用
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<!--configuration核心配置文件-->
+<configuration>
+
+    <!--引入外部配置文件-->
+    <properties resource="db.properties"/>  //第一种
+     <!--
+    <properties resource="db.properties">  //第二种
+        <property name="username" value="root"/>
+        <property name="password" value="111111"/>
+    </properties>
+	-->
+
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"/>
+            <dataSource type="POOLED">
+                <property name="driver" value="${driver}"/>
+                <property name="url" value="${url}"/>
+                <property name="username" value="${username}"/>
+                <property name="password" value="${password}"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+...
+
+</configuration>
+```
+
+- 可以直接引入外部文件
+- 可以在其中增加一些属性配置
+- **如果两个文件有同一个字段，优先使用外部配置文件的！**
+
+## 4.4 类型别名（typeAliases）
+
+- 类型别名可为 Java 类型设置一个缩写名字。
+- 存在的意义仅在降低冗余的全限定类名书写的冗余
+
+**方式一：**
+
+给一个实体类单独起名
+
+```xml
+<!--mybatis-config.xml-->
+<!--可以给实体类起别名-->
+<typeAliases>
+    <typeAlias type="com.luo.pojo.User" alias="User"/>
+</typeAliases>
+-------------------------------------------------------
+<!--UserMapper.xml-->
+<select id="getUserList" resultType="User">
+    select
+    	*
+    from user
+</select>
+```
+
+**方式二：**
+
+指定一个包名，Mybatis会在包名下面搜索需要的Java Bean，比如：扫描实体类的包，它的默认别名就为这个类的 类名，首字母小写*(大写也可)*！
+
+```xml
+<!--mybatis-config.xml-->
+<!--扫描指定包下的实体类们，给它们默认别名为类名首字母小写-->
+<typeAliases>
+    <package name="com.luo.pojo"/>
+</typeAliases>
+----------------------------------------------------
+<!--UserMapper.xml-->
+<select id="getUserList" resultType="user">
+    select
+    	*
+    from user
+</select>
+```
+
+在实体类比较少的时候，使用第一种方式。
+
+如果实体类十分多，建议使用第二种。
+
+第一种可以DIY别名，第二种则.不行.，如果非要改，需要在实体上增加注解
+
+```xml
+@Alias("userA")
+public class User {
+    ......
+}
+--------------------
+<!--UserMapper.xml-->
+<select id="getUserList" resultType="userA">
+    select
+    	*
+    from user
+</select>
+```
+
+**Java 类型内建的类型别名**
+
+| 别名       | 映射的类型 |
+| :--------- | :--------- |
+| _int       | int        |
+| decimal    | BigDecimal |
+| bigdecimal | BigDecimal |
+| map        | Map        |
+| int        | Integer    |
+
+。。。
+
+## 4.5 设置（settings）
+
+这是 MyBatis 中极为重要的调整设置，它们会改变 MyBatis 的运行时行为。
+
+```xml
+<settings>
+  <setting name="cacheEnabled" value="true"/> //开启缓存
+  <setting name="lazyLoadingEnabled" value="true"/> //懒加载
+  <setting name="aggressiveLazyLoading" value="true"/>
+  <setting name="multipleResultSetsEnabled" value="true"/>
+  <setting name="useColumnLabel" value="true"/>
+  <setting name="useGeneratedKeys" value="false"/>
+  <setting name="autoMappingBehavior" value="PARTIAL"/>
+  <setting name="autoMappingUnknownColumnBehavior" value="WARNING"/>
+  <setting name="defaultExecutorType" value="SIMPLE"/>
+  <setting name="defaultStatementTimeout" value="25"/>
+  <setting name="defaultFetchSize" value="100"/>
+  <setting name="safeRowBoundsEnabled" value="false"/>
+  <setting name="safeResultHandlerEnabled" value="true"/>
+  <setting name="mapUnderscoreToCamelCase" value="false"/> //orm字段驼峰转换
+  <setting name="localCacheScope" value="SESSION"/>
+  <setting name="jdbcTypeForNull" value="OTHER"/>
+  <setting name="lazyLoadTriggerMethods" value="equals,clone,hashCode,toString"/>
+  <setting name="defaultScriptingLanguage" value="org.apache.ibatis.scripting.xmltags.XMLLanguageDriver"/>
+  <setting name="defaultEnumTypeHandler" value="org.apache.ibatis.type.EnumTypeHandler"/>
+  <setting name="callSettersOnNulls" value="false"/>
+  <setting name="returnInstanceForEmptyRow" value="false"/>
+  <setting name="logPrefix" value="exampleLogPreFix_"/>
+  <setting name="logImpl" value="SLF4J | LOG4J | LOG4J2 | JDK_LOGGING | COMMONS_LOGGING | STDOUT_LOGGING | NO_LOGGING"/> //实现日志功能
+  <setting name="proxyFactory" value="CGLIB | JAVASSIST"/>
+  <setting name="vfsImpl" value="org.mybatis.example.YourselfVfsImpl"/>
+  <setting name="useActualParamName" value="true"/>
+  <setting name="configurationFactory" value="org.mybatis.example.ConfigurationFactory"/>
+</settings>
+```
+
+## 4.6 其他配置
+
+- [typeHandlers（类型处理器）](https://mybatis.org/mybatis-3/zh/configuration.html#typeHandlers)
+- [objectFactory（对象工厂）](https://mybatis.org/mybatis-3/zh/configuration.html#objectFactory)
+- [plugins（插件）](https://mybatis.org/mybatis-3/zh/configuration.html#plugins)
+  - mybatis-generator-core
+  - mybatis-plus
+  - 通用mapper
+
+## 4.7 映射器（mappers）
+
+MapperRegistry：注册绑定我们的Mapper文件；
+
+方式一：使用**xml路径**<font color = "red">【推荐使用】</font>
+
+```xml
+<!-- 使用相对于类路径的资源引用 -->
+<mappers>
+  <mapper resource="com/luo/dao/UserMapper.xml"/>
+  <mapper resource="org/mybatis/builder/BlogMapper.xml"/>
+  <mapper resource="org/mybatis/builder/PostMapper.xml"/>
+</mappers>
+```
+
+方式二：使用class文件绑定注册（**接口类路径**）
+
+```xml
+<mappers>
+    <mapper class="com.luo.dao.UserMapper"/>
+</mappers>
+```
+
+<font color = "red">**注意点：**</font>
+
+- <font color = "red">**接口和他的Mapper配置文件必须同名！**</font>
+- <font color = "red">**接口和他的Mapper配置文件必须在同一个包下！**</font>
+
+方式三：使用扫描包进行注入绑定
+
+```xml
+<!-- 将包内的映射器接口全部注册为映射器 -->
+<mappers>
+  <package name="com.luo.dao"/>
+</mappers>
+```
+
+<font color = "red">**注意点：**</font>
+
+- <font color = "red">**接口和他的Mapper配置文件必须同名！**</font>
+- <font color = "red">**接口和他的Mapper配置文件必须在同一个包下！**</font>
