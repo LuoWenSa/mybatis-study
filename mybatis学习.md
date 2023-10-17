@@ -1,4 +1,4 @@
-# 1. 简介
+1. 简介
 
 mybatis中文文档：https://mybatis.org/mybatis-3/zh/index.html
 
@@ -28,7 +28,6 @@ mybatis中文文档：https://mybatis.org/mybatis-3/zh/index.html
   </dependency>
   ```
 
-  
 
 ## 1.3 什么是持久化
 
@@ -853,3 +852,173 @@ MapperRegistry：注册绑定我们的Mapper文件；
 - resultMap 元素是 MyBatis 中最重要最强大的元素。
 - ResultMap 的设计思想是，对简单的语句做到零配置，对于复杂一点的语句，只需要描述语句之间的关系就行了。
 - 这就是 ResultMap 的优秀之处——你完全可以不用显式地配置它们。
+
+# 6.日志
+
+## 6.1、日志工厂
+
+如果一个数据库操作，出现了异常，我们需要排错。日志就是最好的助手！
+
+曾经：sout、debug
+
+现在：日志工厂！
+
+| logImpl    | 指定 MyBatis 所用日志的具体实现，未指定时将自动查找。 | SLF4J \| LOG4J（3.5.9 起废弃） \| LOG4J2 \| JDK_LOGGING \| COMMONS_LOGGING \| STDOUT_LOGGING \| NO_LOGGING | 未设置     |
+| ---------- | ----------------------------------------------------- | ------------------------------------------------------------ | ---------- |
+| **设置名** | **描述**                                              | 有效值                                                       | **默认值** |
+
+- SLF4J 
+- LOG4J（3.5.9 起废弃）【掌握】
+- LOG4J2
+- JDK_LOGGING
+- COMMONS_LOGGING
+- STDOUT_LOGGING【掌握】
+- NO_LOGGING
+
+在Mybatis中具体使用哪个----日志实现，在设置中设定！
+
+**STDOUT_LOGGING 标准日志输出**
+
+在mybatis核心配置文件中，配置我们的日志！
+
+```xml
+<settings>
+    <!--标准的日志工厂实现-->
+    <setting name="logImpl" value="STDOUT_LOGGING"/>
+</settings>
+```
+
+控制台打印：
+
+```mysql
+Opening JDBC Connection
+Created connection 1411892748.
+Setting autocommit to false on JDBC Connection [com.mysql.jdbc.JDBC4Connection@5427c60c]
+==>  Preparing: select * from user where id = ?
+==> Parameters: 2(Integer)
+<==    Columns: id, name, pwd
+<==        Row: 2, 小鱼, 159753
+<==      Total: 1
+user = User{id=2, name='小鱼', password='159753'}
+Resetting autocommit to true on JDBC Connection [com.mysql.jdbc.JDBC4Connection@5427c60c]
+Closing JDBC Connection [com.mysql.jdbc.JDBC4Connection@5427c60c]
+Returned connection 1411892748 to pool.
+```
+
+## 6.2、Log4j
+
+什么是Log4j？
+
+- Log4j是[Apache](https://baike.baidu.com/item/Apache/8512995?fromModule=lemma_inlink)的一个[开源项目](https://baike.baidu.com/item/开源项目/3406069?fromModule=lemma_inlink)，通过使用Log4j，我们可以控制日志信息输送的目的地是[控制台](https://baike.baidu.com/item/控制台/2438626?fromModule=lemma_inlink)、文件、GUI组件，甚至是[套接口](https://baike.baidu.com/item/套接口/10058888?fromModule=lemma_inlink)服务器、NT的事件记录器、[UNIX](https://baike.baidu.com/item/UNIX?fromModule=lemma_inlink) [Syslog](https://baike.baidu.com/item/Syslog?fromModule=lemma_inlink)[守护进程](https://baike.baidu.com/item/守护进程/966835?fromModule=lemma_inlink)等
+
+- 我们也可以控制每一条日志的[输出格式](https://baike.baidu.com/item/输出格式/14456488?fromModule=lemma_inlink)
+
+- 通过定义每一条日志信息的级别，我们能够更加细致地控制日志的生成过程
+
+- 通过一个[配置文件](https://baike.baidu.com/item/配置文件/286550?fromModule=lemma_inlink)来灵活地进行配置，而不需要修改应用的代码
+
+  
+
+1.先导入log4j的包
+
+```xml
+<!-- https://mvnrepository.com/artifact/log4j/log4j -->
+<dependency>
+    <groupId>log4j</groupId>
+    <artifactId>log4j</artifactId>
+    <version>1.2.17</version>
+</dependency>
+```
+
+2.log4j.properties
+
+
+```properties
+#将等级为DEBUG的日志信息输出到console和file这两个目的地，console和file的定义在下面的代码
+log4j.rootLogger=DEBUG,console,file
+
+#控制台输出的相关设置
+log4j.appender.console = org.apache.log4j.ConsoleAppender
+log4j.appender.console.Target = System.out
+log4j.appender.console.Threshold=DEBUG
+log4j.appender.console.layout = org.apache.log4j.PatternLayout
+log4j.appender.console.layout.ConversionPattern=[%c]-%m%n
+
+#文件输出的相关设置
+log4j.appender.file = org.apache.log4j.RollingFileAppender
+log4j.appender.file.File=./log/luo.log
+log4j.appender.file.MaxFileSize=10mb
+log4j.appender.file.Threshold=DEBUG
+log4j.appender.file.layout=org.apache.log4j.PatternLayout
+log4j.appender.file.layout.ConversionPattern=[%p][%d{yy-MM-dd}][%c]%m%n
+
+#日志输出级别
+log4j.logger.org.mybatis=DEBUG
+log4j.logger.java.sql=DEBUG
+log4j.logger.java.sql.Statement=DEBUG
+log4j.logger.java.sql.ResultSet=DEBUG
+log4j.logger.java.sql.PreparedStatement=DEBUG
+```
+
+3.配置log4j为日志的实现
+
+```xml
+<settings>
+    <setting name="logImpl" value="LOG4J"/>
+</settings>
+```
+
+4.Log4j的使用！直接测试运行刚才的查询
+
+```mysql
+[org.apache.ibatis.logging.LogFactory]-Logging initialized using 'class org.apache.ibatis.logging.log4j.Log4jImpl' adapter.
+[org.apache.ibatis.logging.LogFactory]-Logging initialized using 'class org.apache.ibatis.logging.log4j.Log4jImpl' adapter.
+[org.apache.ibatis.io.VFS]-Class not found: org.jboss.vfs.VFS
+[org.apache.ibatis.io.JBoss6VFS]-JBoss 6 VFS API is not available in this environment.
+[org.apache.ibatis.io.VFS]-Class not found: org.jboss.vfs.VirtualFile
+[org.apache.ibatis.io.VFS]-VFS implementation org.apache.ibatis.io.JBoss6VFS is not valid in this environment.
+[org.apache.ibatis.io.VFS]-Using VFS adapter org.apache.ibatis.io.DefaultVFS
+[org.apache.ibatis.io.DefaultVFS]-Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-04/target/classes/com/luo/pojo
+[org.apache.ibatis.io.DefaultVFS]-Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-04/target/classes/com/luo/pojo
+[org.apache.ibatis.io.DefaultVFS]-Reader entry: User.class
+[org.apache.ibatis.io.DefaultVFS]-Listing file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-04/target/classes/com/luo/pojo
+[org.apache.ibatis.io.DefaultVFS]-Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-04/target/classes/com/luo/pojo/User.class
+[org.apache.ibatis.io.DefaultVFS]-Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-04/target/classes/com/luo/pojo/User.class
+[org.apache.ibatis.io.DefaultVFS]-Reader entry: ����   4 <
+[org.apache.ibatis.io.ResolverUtil]-Checking to see if class com.luo.pojo.User matches criteria [is assignable to Object]
+[org.apache.ibatis.datasource.pooled.PooledDataSource]-PooledDataSource forcefully closed/removed all connections.
+[org.apache.ibatis.datasource.pooled.PooledDataSource]-PooledDataSource forcefully closed/removed all connections.
+[org.apache.ibatis.datasource.pooled.PooledDataSource]-PooledDataSource forcefully closed/removed all connections.
+[org.apache.ibatis.datasource.pooled.PooledDataSource]-PooledDataSource forcefully closed/removed all connections.
+[org.apache.ibatis.transaction.jdbc.JdbcTransaction]-Opening JDBC Connection
+[org.apache.ibatis.datasource.pooled.PooledDataSource]-Created connection 1500608548.
+[org.apache.ibatis.transaction.jdbc.JdbcTransaction]-Setting autocommit to false on JDBC Connection [com.mysql.jdbc.JDBC4Connection@59717824]
+[com.luo.dao.UserMapper.getUserById]-==>  Preparing: select * from user where id = ?
+[com.luo.dao.UserMapper.getUserById]-==> Parameters: 2(Integer)
+[com.luo.dao.UserMapper.getUserById]-<==      Total: 1
+user = User{id=2, name='小鱼', password='159753'}
+[org.apache.ibatis.transaction.jdbc.JdbcTransaction]-Resetting autocommit to true on JDBC Connection [com.mysql.jdbc.JDBC4Connection@59717824]
+[org.apache.ibatis.transaction.jdbc.JdbcTransaction]-Closing JDBC Connection [com.mysql.jdbc.JDBC4Connection@59717824]
+[org.apache.ibatis.datasource.pooled.PooledDataSource]-Returned connection 1500608548 to pool.
+```
+
+**简单使用**
+
+1.在要使用Log4j的类中，导入包 import org.apache.log4j.Logger;
+
+2.日志对象，参数为当前类的class
+
+```java
+static Logger logger = Logger.getLogger(UserMapperTest.class);
+```
+
+3.日志级别
+
+==OFF > FATAL > **ERROR** > **WARN** > **INFO** > **DEBUG** > TRACE > ALL==
+
+```java
+logger.info("info:进入了testLog4j");
+logger.debug("debug:进入了testLog4j");
+logger.error("error:进入了testLog4j");
+```
+
