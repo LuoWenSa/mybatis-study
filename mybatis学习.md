@@ -1,4 +1,4 @@
-1. 简介
+# 1.简介
 
 mybatis中文文档：https://mybatis.org/mybatis-3/zh/index.html
 
@@ -1022,3 +1022,169 @@ logger.debug("debug:进入了testLog4j");
 logger.error("error:进入了testLog4j");
 ```
 
+# 7.分页
+
+**思考：为什么要分页？**
+
+- 减少数据的处理量
+
+## 7.1、使用Limit分页
+
+```mysql
+语法：SELECT * FROM user LIMIT startIndex,pageSize;
+SELECT * FROM user limit 3;  #等价于[0,n]
+```
+
+
+
+使用Mybatis实现分页，核心SQL
+
+​	1.接口
+
+```java
+//分页
+List<User> userList = userMapper.getUserByLimit(map);
+```
+
+​	2.Mapper.xml
+
+```xml
+<!--分页-->
+<select id="getUserByLimit" parameterType="map" resultType="User">
+    select
+        *
+    from user
+    limit #{startIndex},#{pageSize}
+</select>
+```
+
+​	3.测试
+
+```java
+@Test
+public void getUserByLimit(){
+    SqlSession sqlSession = MybatisUtil.getSqlSession();
+    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+
+    Map<String, Integer> map = new HashMap<>();
+    map.put("startIndex",1);
+    map.put("pageSize",2);
+    //分页
+    List<User> userList = userMapper.getUserByLimit(map);
+    System.out.println("userList = " + userList);
+
+    sqlSession.close();
+}
+```
+
+## 7.2、RowBounds分页
+
+不再使用SQL实现分页
+
+​	1.接口
+
+```java
+//分页
+List<User> getUserByRowBounds();
+```
+
+​	2.mapper.xml
+
+```xml
+<!--分页2-->
+<select id="getUserByRowBounds" resultMap="UserMap">
+    select
+    	*
+    from user
+</select>
+```
+
+​	3.测试
+
+```java
+@Test
+public void getUserByRowBounds(){
+    SqlSession sqlSession = MybatisUtil.getSqlSession();
+
+    //RowBounds实现
+    RowBounds rowBounds = new RowBounds(1,2);
+
+    //通过Java代码层面实现分页
+    List<User> userList = sqlSession.selectList("com.luo.dao.UserMapper.getUserByRowBounds",null,rowBounds);
+    System.out.println("userList = " + userList);
+
+    sqlSession.close();
+}
+```
+
+## 7.3、分页插件
+
+### Mybatis分页插件PageHelper
+
+了解即可，万一以后公司的架构师说要使用，你需要 知道它是什么东西！
+
+# 8.使用注解开发
+
+​	1.注解在接口上实现
+
+```java
+@Select("select id, name, pwd as password from user")
+List<User> getUsers();
+```
+
+​	2.需要在核心配置文件中绑定接口！
+
+```xml
+<!--绑定接口-->
+<mappers>
+    <mapper class="com.luo.dao.UserMapper"/>
+</mappers>
+```
+
+​	3.测试
+
+```java
+@Test
+public void test(){
+    SqlSession sqlSession = MybatisUtil.getSqlSession();
+
+    //底层主要应用反射
+    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+    List<User> users = userMapper.getUsers();
+    System.out.println("users = " + users);
+
+    sqlSession.close();
+}
+```
+
+本质：反射机制实现
+
+底层：动态代理！
+
+## 8.1 CRUD
+
+# Mybatis执行流程剖析
+
+1. Resources获取加载全局配置文件
+
+2. 实例化SqlSessionFactoryBuilder构造器
+
+3. 解析配置文件流XMLConfigBuilder
+
+4. Configuration所有的配置信息（.build(inputStream)）
+
+5. SqlSessionFactory实例化
+
+6. transactional事务管理器，从事务工厂获取一个事务连接
+
+7. **创建executor执行器（import）**
+
+8. 创建sqlSession
+
+9. 实现CRUD
+
+   ---------------------------->失败会回滚事务（6）
+
+   ---------------------------->成功会提交事务（6）
+
+10. 关闭

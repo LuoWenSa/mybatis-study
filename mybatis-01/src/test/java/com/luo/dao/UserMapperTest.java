@@ -41,6 +41,18 @@ public class UserMapperTest {
     }
 
     @Test
+    public void getUser2(){
+        //第一步：获得SqlSession对象
+        SqlSession sqlSession = MybatisUtil.getSqlSession();
+        //第二步：执行SQL
+        UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+        User user = userMapper.getUser2(3,"小雪");
+        System.out.println("user = " + user);
+        //关闭sqlSession
+        sqlSession.close();
+    }
+
+    @Test
     public void addUser(){
         //第一步：获得SqlSession对象
         SqlSession sqlSession = MybatisUtil.getSqlSession();

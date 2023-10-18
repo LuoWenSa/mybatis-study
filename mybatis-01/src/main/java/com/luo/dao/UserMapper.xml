@@ -19,6 +19,14 @@
         where id = #{id}
     </select>
 
+    <select id="getUser2" resultType="com.luo.pojo.User">
+        select
+            *
+        from user
+        where id = #{id}
+          and name = #{name}
+    </select>
+
     <select id="getUserLike" parameterType="string" resultType="com.luo.pojo.User">
         select
             *

@@ -20,4 +20,19 @@
         where id = #{id}
     </select>
 
+    <!--分页-->
+    <select id="getUserByLimit" parameterType="map" resultType="User">
+        select
+            *
+        from user
+        limit #{startIndex},#{pageSize}
+    </select>
+
+    <!--分页2-->
+    <select id="getUserByRowBounds" resultMap="UserMap">
+        select
+            *
+        from user
+    </select>
+
 </mapper>
