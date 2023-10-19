@@ -1163,6 +1163,47 @@ public void test(){
 
 ## 8.1 CRUD
 
+我们可以在工具类创建的时候实现自动提交事务！
+
+```java
+public static SqlSession getSqlSession(){
+    return sqlSessionFactory.openSession(true);
+}
+```
+
+编写接口，增加注解
+
+```java
+public interface UserMapper {
+
+    @Select("select id, name, pwd as password from user")
+    List<User> getUsers();
+
+    //方法存在多个参数，所有的参数前面必须加上 @Param("id")
+    @Select("select * from user where id = #{id}")
+    User getUserByID(@Param("id") int id);
+
+    @Insert("insert into user(id,name,pwd) values(#{id},#{name},#{password})")
+    int addUser(User user);
+
+    @Update("update user set name=#{name},pwd=#{password} where id=#{id}")
+    int updateUser(User user);
+
+    @Delete("delete from user where id = #{uid}")
+    int deleteUserById(@Param("uid") int id);
+
+}
+```
+
+【注意：我们必须要将接口注册绑定到我们的核心配置文件中！】
+
+## 关于@Param()注解
+
+- 基本类型的参数或者String类型，需要加上
+- @Param("user") User u         #{user.userName},#{user.userAge}
+- 如果只有一个基本类型的话，可以忽略，但是建议大家都加上！
+- 我们在SQL中引用的就是我们这里的@Param("uid")中设定的属性名！
+
 # Mybatis执行流程剖析
 
 1. Resources获取加载全局配置文件
@@ -1188,3 +1229,154 @@ public void test(){
    ---------------------------->成功会提交事务（6）
 
 10. 关闭
+
+# 9.Lombok
+
+- java library
+- plugs
+- build tools
+- with one annotation your class
+
+使用步骤：
+
+​	1.在IDEA中安装Lombok插件！
+
+​	2.在项目中导入Lombok的jar包
+
+```xml
+<!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+<dependency>
+    <groupId>org.projectlombok</groupId>
+    <artifactId>lombok</artifactId>
+    <version>1.18.30</version>
+</dependency>
+```
+
+​	3.在实体类上加注解即可！
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class User {
+    private Integer id;
+    private String name;
+    private String password;
+}
+```
+
+```
+@Getter and @Setter
+@FieldNameConstants
+@ToString
+@EqualsAndHashCode
+@AllArgsConstructor, @RequiredArgsConstructor and @NoArgsConstructor
+@Log, @Log4j, @Log4j2, @Slf4j, @XSlf4j, @CommonsLog, @JBossLog, @Flogger, @CustomLog
+@Data
+@Builder
+@SuperBuilder
+@Singular
+@Delegate
+@Value
+@Accessors
+@Wither
+@With
+@SneakyThrows
+@val
+@var
+experimental @var
+@UtilityClass
+```
+
+说明：
+
+```java
+@Data：无参构造，get，set，toString，hashCode，equals
+@AllArgsConstructor
+@NoArgsConstructor
+```
+
+# 10.多对一、一对多处理
+
+```xml
+<!-- 非常复杂的语句 -->
+<select id="selectBlogDetails" resultMap="detailedBlogResultMap">
+  select
+       B.id as blog_id,
+       B.title as blog_title,
+       B.author_id as blog_author_id,
+       A.id as author_id,
+       A.username as author_username,
+       A.password as author_password,
+       A.email as author_email,
+       A.bio as author_bio,
+       A.favourite_section as author_favourite_section,
+       P.id as post_id,
+       P.blog_id as post_blog_id,
+       P.author_id as post_author_id,
+       P.created_on as post_created_on,
+       P.section as post_section,
+       P.subject as post_subject,
+       P.draft as draft,
+       P.body as post_body,
+       C.id as comment_id,
+       C.post_id as comment_post_id,
+       C.name as comment_name,
+       C.comment as comment_text,
+       T.id as tag_id,
+       T.name as tag_name
+  from Blog B
+       left outer join Author A on B.author_id = A.id
+       left outer join Post P on B.id = P.blog_id
+       left outer join Comment C on P.id = C.post_id
+       left outer join Post_Tag PT on PT.post_id = P.id
+       left outer join Tag T on PT.tag_id = T.id
+  where B.id = #{id}
+</select>
+```
+
+```xml
+<!-- 非常复杂的结果映射 -->
+<resultMap id="detailedBlogResultMap" type="Blog">
+  <constructor>
+    <idArg column="blog_id" javaType="int"/>
+  </constructor>
+  <result property="title" column="blog_title"/>
+  <association property="author" javaType="Author">
+    <id property="id" column="author_id"/>
+    <result property="username" column="author_username"/>
+    <result property="password" column="author_password"/>
+    <result property="email" column="author_email"/>
+    <result property="bio" column="author_bio"/>
+    <result property="favouriteSection" column="author_favourite_section"/>
+  </association>
+  <collection property="posts" ofType="Post">
+    <id property="id" column="post_id"/>
+    <result property="subject" column="post_subject"/>
+    <association property="author" javaType="Author"/>
+    <collection property="comments" ofType="Comment">
+      <id property="id" column="comment_id"/>
+    </collection>
+    <collection property="tags" ofType="Tag" >
+      <id property="id" column="tag_id"/>
+    </collection>
+    <discriminator javaType="int" column="draft">
+      <case value="1" resultType="DraftPost"/>
+    </discriminator>
+  </collection>
+</resultMap>
+```
+
+**小结**
+
+​	1.关联-association 【多对一】
+
+​	2.集合-collection 【一对多】
+
+​	3.javaType & ofType
+
+​		1.javaType用来指定实体类中属性的类型
+
+​		2.ofType用来指定映射到List或者集合中的pojo类型，泛型中的约束类型！
+
+​	
