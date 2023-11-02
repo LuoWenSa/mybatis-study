@@ -1379,4 +1379,267 @@ experimental @var
 
 ​		2.ofType用来指定映射到List或者集合中的pojo类型，泛型中的约束类型！
 
-​	
+
+
+**慢SQL   1000s   |   好的SQL   1s**
+
+# 面试高频：
+
+- MySql引擎
+- InnoDB的底层原理
+- 索引
+- 索引优化
+
+
+
+# 12.动态sql
+
+​	==什么是动态SQL：动态SQL就是指根据不同的条件生成不同的SQL语句==
+
+使用动态 SQL 并非一件易事，但借助可用于任何 SQL 映射语句中的强大的动态 SQL 语言，MyBatis 显著地提升了这一特性的易用性。
+
+如果你之前用过 JSTL 或任何基于类 XML 语言的文本处理器，你对动态 SQL 元素可能会感觉似曾相识。在 MyBatis 之前的版本中，需要花时间了解大量的元素。借助功能强大的基于 OGNL 的表达式，MyBatis 3 替换了之前的大部分元素，大大精简了元素种类，现在要学习的元素种类比原来的一半还要少。
+
+- if
+- choose (when, otherwise)
+- trim (where, set)
+- foreach
+
+## 搭建环境
+
+```mysql
+CREATE TABLE `blog`(
+`id` VARCHAR(50) NOT NULL COMMENT '博客id',
+`title` VARCHAR(100) NOT NULL COMMENT '博客标题',
+`author` VARCHAR(30) NOT NULL COMMENT '博客作者',
+`create_time` DATETIME NOT NULL COMMENT '创建时间',
+`views` INT(30) NOT NULL COMMENT '浏览量'
+)ENGINE=INNODB DEFAULT CHARSET=utf8
+```
+
+**小贴士@SuppressWarnings：**
+
+```java
+@SuppressWarnings("all") //抑制警告，消除黄色波浪线
+```
+
+## IF
+
+```xml
+<select id="queryBlogIF" parameterType="map" resultType="com.luo.pojo.Blog">
+    select
+    	*
+    from blog
+    where 1=1
+    <if test="title != null">
+        and title = #{title}
+    </if>
+    <if test="author != null">
+        and author = #{author}
+    </if>
+</select>
+```
+
+## choose (when, otherwise)
+
+有时候，我们不想使用所有的条件，而只是想从多个条件中**选择一个使用**。针对这种情况，MyBatis 提供了 choose 元素，它有点像 Java 中的 switch 语句。
+
+```xml
+<select id="queryBlogChoose" parameterType="map" resultType="com.luo.pojo.Blog">
+    select
+    	*
+    from blog
+    <where>
+        <choose>
+            <when test="title != null and title != ''">
+                and title = #{title}
+            </when>
+            <when test="author != null">
+                and author = #{author}
+            </when>
+            <otherwise>
+                and views &gt; 2000
+            </otherwise>
+        </choose>
+    </where>
+</select>
+```
+
+## trim (where, set)
+
+*where* 元素只会在子元素返回任何内容的情况下才插入 “WHERE” 子句。而且，若子句的开头为 “AND” 或 “OR”，*where* 元素也会将它们去除。
+
+```xml
+<select id="queryBlogIF" parameterType="map" resultType="com.luo.pojo.Blog">
+    select
+    	*
+    from blog
+    <where>
+        <if test="title != null">
+            and title = #{title}
+        </if>
+        <if test="author != null">
+            and author = #{author}
+        </if>
+    </where>
+</select>
+```
+
+用于动态更新语句的类似解决方案叫做 *set*。*set* 元素可以用于动态包含需要更新的列，忽略其它不更新的列。*set* 元素会动态地在行首插入 SET 关键字，并会删掉额外的逗号
+
+```xml
+<update id="updateBlog" parameterType="map">
+    update blog
+    <set>
+        <if test="title != null">
+            title = #{title},
+        </if>
+        <if test="author != null">
+            author = #{author}
+        </if>
+    </set>
+    where id = #{id}
+</update>
+```
+
+trim：
+
+where标签 = 
+
+```xml
+<trim prefix="WHERE" prefixOverrides="AND |OR ">
+  ...
+</trim>
+```
+
+set标签 = 
+
+```xml
+<trim prefix="SET" suffixOverrides=",">
+  ...
+</trim>
+```
+
+trim标签作用下的SQL的insert语句
+
+```xml
+insert into study
+<trim prefix="(" suffix=")" suffixOverrides="," >
+    <if test="id != null" >
+        id,
+    </if>
+    <if test="name != null" >
+        name,
+    </if>
+</trim>
+<trim prefix="values (" suffix=")" suffixOverrides="," >
+    <if test="id != null" >
+        #{id},
+    </if>
+</trim>
+```
+
+
+
+==所谓的动态SQL，本质还是SQL语句，只是我们可以在SQL层面，去执行一个逻辑代码==
+
+
+
+## Foreach
+
+```xml
+select 
+	* 
+from user 
+where 1=1 
+  and 
+  
+<foreach item="id" collection="ids"
+         open="(" separator="or" close=")" nullable="true">
+    id = #{id}
+</foreach>
+
+  
+  (id=1 or id=2 or id=3)
+```
+
+动态 SQL 的另一个常见使用场景是对集合进行遍历（尤其是在构建 IN 条件语句的时候）
+
+*foreach* 元素的功能非常强大，它允许你指定一个集合，声明可以在元素体内使用的**集合项（item）**和**索引（index）变量**。它也允许你指定开头与结尾的字符串以及集合项迭代之间的分隔符。这个元素也不会错误地添加多余的分隔符，看它多智能！
+
+**提示** 你可以将任何可迭代对象（如 List、Set 等）、Map 对象或者数组对象作为集合参数传递给 *foreach*。当使用可迭代对象或者数组时，index 是当前迭代的序号，item 的值是本次迭代获取到的元素。当使用 Map 对象（或者 Map.Entry 对象的集合）时，index 是键，item 是值。
+
+<font color = "red">**以下是Map实例，List也可以，注意也要加@Param("xx"),parameterType="map"改为parameterType="list"**</font>
+
+```xml
+Map<String, Object> map = new HashMap<>();
+map.put("idss",ids);
+map.put("id1","1");
+map.put("id2","2");
+map.put("id3","3");
+List<Blog> blogs = mapper.queryBlogForeach(map);
+---------------------------------------------------------------------------------
+//查询第1-2-3号记录的博客
+List<Blog> queryBlogForeach(@Param("ids") Map<String, Object> map);
+---------------------------------------------------------------------------------
+<select id="queryBlogForeach" parameterType="map" resultType="com.luo.pojo.Blog">
+    select
+    	*
+    from blog
+    <where>
+        <foreach collection="ids" item="id"
+                 open="id in (" separator="," close=")">
+            #{id}
+        </foreach>
+    </where>
+</select>
+```
+
+
+
+## SQL片段
+
+有的时候，我们可能会将一些功能的部分抽取出来，方便复用！
+
+1.使用SQL标签抽取公共的部分
+
+```xml
+<sql id="if-title-author">
+    <if test="title != null">
+        and title = #{title}
+    </if>
+    <if test="author != null">
+        and author = #{author}
+    </if>
+</sql>
+```
+
+2.在需要使用的地方使用include标签引用即可
+
+```xml
+<select id="queryBlogIF" parameterType="map" resultType="com.luo.pojo.Blog">
+    select
+    	*
+    from blog
+    <where>
+        <include refid="if-title-author"/>
+    </where>
+</select>
+```
+
+
+
+注意事项：
+
+- 最好基于单表来定义SQL片段！
+- 不要存在where标签
+
+
+
+==动态SQL就是在拼接SQL语句，我们只要保证SQL的正确性，按照SQL的格式，去排列组合就可以了==
+
+建议：
+
+- 先在Mysql中写出完整的SQL，再对应地去修改成为我们的动态SQL实现通用即可！
+
+# 13.缓存
