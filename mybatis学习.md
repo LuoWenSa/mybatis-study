@@ -1675,3 +1675,172 @@ List<Blog> queryBlogForeach(@Param("ids") Map<String, Object> map);
   - 默认情况下，只有一级缓存开启。（SqlSession级别的缓存，也称为本地缓存）
   - 二级缓存需要手动开启和配置，他是基于namespace级别的缓存（Mapper接口层面）
   - 为例提高拓展性，Mybatis定义了缓存接口Cache。我们可以通过实现Cache接口来自定义二级缓存
+
+## 13.3、一级缓存
+
+- 一级缓存也叫做本地缓存：SqlSession
+  - 与数据库同一次会话期间查询到的数据会放在本地缓存中。
+  - 以后如果需要获取相同的数据，直接从缓存中拿，没必要再去查询数据库
+
+测试步骤：
+
+​	1.开启日志！
+
+```xml
+<settings>
+    <!--标准的日志工厂实现-->
+    <setting name="logImpl" value="STDOUT_LOGGING"/>
+</settings>
+```
+
+​	2.测试在一个SqlSession中查询两次记录
+
+```java
+@Test
+public void test(){
+    SqlSession sqlSession = MybatisUtil.getSqlSession();
+    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+
+    User user = userMapper.queryUserById(3);
+    System.out.println("user = " + user);
+
+    System.out.println("=========================");
+
+    User user2 = userMapper.queryUserById(3);
+    System.out.println("user2 = " + user2);
+
+    System.out.println(user == user2);
+
+    sqlSession.close();
+}
+```
+
+​	3.查看日志输出
+
+```mysql
+Logging initialized using 'class org.apache.ibatis.logging.stdout.StdOutImpl' adapter.
+Class not found: org.jboss.vfs.VFS
+JBoss 6 VFS API is not available in this environment.
+Class not found: org.jboss.vfs.VirtualFile
+VFS implementation org.apache.ibatis.io.JBoss6VFS is not valid in this environment.
+Using VFS adapter org.apache.ibatis.io.DefaultVFS
+Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Reader entry: User.class
+Listing file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo/User.class
+Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo/User.class
+Reader entry: ����   4 ]
+Checking to see if class com.luo.pojo.User matches criteria [is assignable to Object]
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+Opening JDBC Connection
+Created connection 797925218.
+==>  Preparing: select * from user where id = ?
+==> Parameters: 3(Integer)
+<==    Columns: id, name, pwd
+<==        Row: 3, 小雪, 200115
+<==      Total: 1
+user = User(id=3, name=小雪, pwd=200115)
+=========================
+user2 = User(id=3, name=小雪, pwd=200115)
+true
+Closing JDBC Connection [com.mysql.jdbc.JDBC4Connection@2f8f5f62]
+Returned connection 797925218 to pool.
+
+Process finished with exit code 0
+```
+
+缓存失效的情况：
+
+​	1.查询不同的东西
+
+​	2.增删改操作，可能会改变原来的数据，所以必定会刷新缓存！
+
+```java
+@Test
+public void test(){
+    SqlSession sqlSession = MybatisUtil.getSqlSession();
+    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+
+    User user = userMapper.queryUserById(3);
+    System.out.println("user = " + user);
+
+    //中间更新，一级缓存失效
+    userMapper.updateUser(new User(1,"小罗","1234567"));
+
+    System.out.println("=========================");
+
+    User user2 = userMapper.queryUserById(3);
+    System.out.println("user2 = " + user2);
+
+    System.out.println(user == user2);
+
+    sqlSession.close();
+}
+```
+
+console：
+
+```mysql
+Logging initialized using 'class org.apache.ibatis.logging.stdout.StdOutImpl' adapter.
+Class not found: org.jboss.vfs.VFS
+JBoss 6 VFS API is not available in this environment.
+Class not found: org.jboss.vfs.VirtualFile
+VFS implementation org.apache.ibatis.io.JBoss6VFS is not valid in this environment.
+Using VFS adapter org.apache.ibatis.io.DefaultVFS
+Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Reader entry: User.class
+Listing file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo/User.class
+Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo/User.class
+Reader entry: ����   4 ^	  G	  H	  I J
+Checking to see if class com.luo.pojo.User matches criteria [is assignable to Object]
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+Opening JDBC Connection
+Created connection 797925218.
+==>  Preparing: select * from user where id = ?
+==> Parameters: 3(Integer)
+<==    Columns: id, name, pwd
+<==        Row: 3, 小雪, 200115
+<==      Total: 1
+user = User(id=3, name=小雪, pwd=200115)
+==>  Preparing: update user set name = ?, pwd = ? where id = ?
+==> Parameters: 小罗(String), 1234567(String), 1(Integer)
+<==    Updates: 1
+=========================
+==>  Preparing: select * from user where id = ?
+==> Parameters: 3(Integer)
+<==    Columns: id, name, pwd
+<==        Row: 3, 小雪, 200115
+<==      Total: 1
+user2 = User(id=3, name=小雪, pwd=200115)
+false
+Closing JDBC Connection [com.mysql.jdbc.JDBC4Connection@2f8f5f62]
+Returned connection 797925218 to pool.
+
+Process finished with exit code 0
+```
+
+​	3.查询不同的Mapper.xml
+
+​	4.手动清理缓存
+
+```java
+//手动清理缓存
+sqlSession.clearCache();
+```
+
+
+
+**小结：**一级缓存默认是开启的，只在一次SqlSession中有效，也就是拿到连接到关闭连接这个区间段！
+
+
+
+## 13.4、二级缓存
