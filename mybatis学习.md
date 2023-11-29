@@ -1844,3 +1844,165 @@ sqlSession.clearCache();
 
 
 ## 13.4、二级缓存
+
+- 二级缓存也叫做全局缓存，一级缓存作用域太低了，所以诞生了二级缓存
+- 基于namespace级别的缓存，一个名称空间对应一个二级缓存；
+- 工作机制
+  - 一个会话查询一条数据，这个数据就会被放在当前会话的一级缓存中；
+  - 如果当前会话关闭了，这个会话对应的一级缓存就没了；但是我们想要的是，**会话关闭了，一级缓存中的数据被保存到二级缓存中；**
+  - 新的会话查询信息，就可以从二级缓存中获取内容；
+  - 不同的mapper查出的数据会放在自己对应的缓存(map)中
+
+
+
+步骤：
+
+​	1.开启全局缓存（默认是开启的）
+
+```xml
+<settings>
+    <!--显式地开启全局缓存-->
+    <setting name="cacheEnabled" value="true"/>
+</settings>
+```
+
+​	2.在要使用二级缓存的Mapper中开启
+
+```xml
+<!--在当前的Mapper.xml中使用二级缓存-->
+<cache/>
+```
+
+​	也可以自定义参数（**不定义参数，实体类需要实现序列化**）
+
+```xml
+<cache
+  eviction="FIFO"
+  flushInterval="60000"
+  size="512"
+  readOnly="true"/>
+```
+
+​	3.测试
+
+```java
+@Test
+public void test2(){
+    SqlSession sqlSession = MybatisUtil.getSqlSession();
+    SqlSession sqlSession2 = MybatisUtil.getSqlSession();
+
+    UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+    UserMapper userMapper2 = sqlSession2.getMapper(UserMapper.class);
+
+    User user = userMapper.queryUserById(3);
+    System.out.println("user = " + user);
+    sqlSession.close();
+
+    User user2 = userMapper2.queryUserById(3);
+    System.out.println("user2 = " + user2);
+    sqlSession2.close();
+}
+```
+
+```mysql
+Logging initialized using 'class org.apache.ibatis.logging.stdout.StdOutImpl' adapter.
+Class not found: org.jboss.vfs.VFS
+JBoss 6 VFS API is not available in this environment.
+Class not found: org.jboss.vfs.VirtualFile
+VFS implementation org.apache.ibatis.io.JBoss6VFS is not valid in this environment.
+Using VFS adapter org.apache.ibatis.io.DefaultVFS
+Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Reader entry: User.class
+Listing file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo
+Find JAR URL: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo/User.class
+Not a JAR: file:/F:/workspace/IdeaProjects/mybatis-study/mybatis-09/target/classes/com/luo/pojo/User.class
+Reader entry: ����   4 `	  H	  I	  J K
+Checking to see if class com.luo.pojo.User matches criteria [is assignable to Object]
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+PooledDataSource forcefully closed/removed all connections.
+Cache Hit Ratio [com.luo.dao.UserMapper]: 0.0
+Opening JDBC Connection
+Created connection 1601292138.
+==>  Preparing: select * from user where id = ?
+==> Parameters: 3(Integer)
+<==    Columns: id, name, pwd
+<==        Row: 3, 小雪, 200115
+<==      Total: 1
+user = User(id=3, name=小雪, pwd=200115)
+Closing JDBC Connection [com.mysql.jdbc.JDBC4Connection@5f71c76a]
+Returned connection 1601292138 to pool.
+As you are using functionality that deserializes object streams, it is recommended to define the JEP-290 serial filter. Please refer to https://docs.oracle.com/pls/topic/lookup?ctx=javase15&id=GUID-8296D8E8-2B93-4B9A-856E-0A65AF9B8C66
+Cache Hit Ratio [com.luo.dao.UserMapper]: 0.5
+user2 = User(id=3, name=小雪, pwd=200115)
+
+Process finished with exit code 0
+```
+
+
+
+小结：
+
+- 只要开启了二级缓存，在同一个Mapper下就有效
+- 所有的数据都会先放在一级缓存中；
+- 只有当会话提交，或者关闭的时候，才会提交到二级缓存中
+
+
+
+## 13.6、自定义缓存-ehcache
+
+```
+Ehcache是一种广泛使用的开源Java分布式缓存。主要面向通用缓存
+```
+
+要在程序中使用，先要导包
+
+```xml
+<!-- https://mvnrepository.com/artifact/org.mybatis.caches/mybatis-ehcache -->
+<dependency>
+    <groupId>org.mybatis.caches</groupId>
+    <artifactId>mybatis-ehcache</artifactId>
+    <version>1.1.0</version>
+</dependency>
+```
+
+在mapper中指定使用我们的ehcache缓存实现！
+
+```xml
+<!--使用ehcache-->
+<cache type="org.mybatis.caches.ehcache.EhcacheCache"/>
+```
+
+ehcache.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
+         updateCheck="false">
+
+    <diskStore path="./tmpdir/Tmp_EhCache"/>
+
+    <defaultCache
+            eternal="false"
+            maxElementsInMemory="10000"
+            overflowToDisk="false"
+            diskPersistent="false"
+            timeToIdleSeconds="1800"
+            timeToLiveSeconds="259200"
+            memoryStoreEvictionPolicy="LRU"/>
+
+    <cache
+            name="cloud_user"
+            eternal="false"
+            maxElementsInMemory="5000"
+            overflowToDisk="false"
+            diskPersistent="false"
+            timeToIdleSeconds="1800"
+            timeToLiveSeconds="1800"
+            memoryStoreEvictionPolicy="LRU"/>
+</ehcache>
+```
+

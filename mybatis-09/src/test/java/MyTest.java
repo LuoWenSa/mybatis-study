@@ -30,4 +30,21 @@ public class MyTest {
         sqlSession.close();
     }
 
+    @Test
+    public void test2(){
+        SqlSession sqlSession = MybatisUtil.getSqlSession();
+        SqlSession sqlSession2 = MybatisUtil.getSqlSession();
+
+        UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+        UserMapper userMapper2 = sqlSession2.getMapper(UserMapper.class);
+
+        User user = userMapper.queryUserById(3);
+        System.out.println("user = " + user);
+        sqlSession.close();
+
+        User user2 = userMapper2.queryUserById(3);
+        System.out.println("user2 = " + user2);
+        sqlSession2.close();
+    }
+
 }
